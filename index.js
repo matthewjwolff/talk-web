@@ -12,15 +12,15 @@ navigator.mediaDevices.getUserMedia(constraints)
         var ws = new WebSocket("ws://localhost:8081/")
 
         // start negotiating a webrtc call
-        const configuration = {'iceServers': [{'urls': 'stun:stun.l.google.com:19302'}]}
+        const configuration = { 'iceServers': [{ 'urls': 'stun:stun.l.google.com:19302' }] }
         const peerConnection = new RTCPeerConnection(configuration);
 
         ws.onmessage = async (e) => {
             var m = e.data
             var message = JSON.parse(m)
             // TODO: async/await
-            if(message.type == "get-offer") {
-                if(message.data == null) {
+            if (message.type == "get-offer") {
+                if (message.data == null) {
                     // create an offer
                     const offer = await peerConnection.createOffer();
                     // set this offer as the local connection
@@ -40,11 +40,11 @@ navigator.mediaDevices.getUserMedia(constraints)
                         "data": answer
                     }))
                 }
-            } else if(message.type == "answer") {
+            } else if (message.type == "answer") {
                 // we are the caller and we got an answer
                 const remoteDesc = new RTCSessionDescription(message.data);
                 await peerConnection.setRemoteDescription(remoteDesc);
-            } else if(message.type == "ice-candidate") {
+            } else if (message.type == "ice-candidate") {
                 // when we learn the other person's ICE candidate, add it to our own
                 await peerConnection.addIceCandidate(message.data)
             }
@@ -54,8 +54,8 @@ navigator.mediaDevices.getUserMedia(constraints)
 
         // as we learn our own ice candidates, tell the other person
         peerConnection.onicecandidate = e => {
-            if(e.candidate) {
-                ws.send(JSON.stringify({'type': "ice-candidate", "data": e.candidate}))
+            if (e.candidate) {
+                ws.send(JSON.stringify({ 'type': "ice-candidate", "data": e.candidate }))
 
             }
         }
@@ -67,16 +67,19 @@ navigator.mediaDevices.getUserMedia(constraints)
             }
         }
 
-        // TODO: handle tracks 
         // add our track to the connection
         peerConnection.addTrack(stream.getAudioTracks()[0])
 
-        peerConnection.ontrack = e => {
-            // a track has been sent to us
-            e.track
-        }
+        // set up a track for the remote user
+        const remoteStream = new MediaStream();
+        const remoteAudio = document.querySelector('audio#remote');
+        remoteAudio.srcObject = remoteStream;
 
-        
+        peerConnection.addEventListener('track', async (event) => {
+            // when we get the remote track, add it to our stream
+            remoteStream.addTrack(event.track);
+        });
+
 
         // we can use WebAudio too, see MediaStreamAudioSourceNode and MediaStreamAudioDestinationNode
 
@@ -93,9 +96,9 @@ navigator.mediaDevices.getUserMedia(constraints)
 
         // init the communication flow
         ws.onopen = e => {
-            ws.send(JSON.stringify({"type":"get-offer"}))
+            ws.send(JSON.stringify({ "type": "get-offer" }))
         }
-        
+
     })
     .catch(error => {
         console.error('Error accessing media devices.', error);
