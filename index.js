@@ -27,7 +27,7 @@ wsURL.toString()
 navigator.mediaDevices.getUserMedia(constraints)
     .then(stream => {
         // get a websocket
-        var ws = new WebSocket("wss://testsrv.wolff.io:8081/")
+        var ws = new WebSocket("wss://testsrv.wolff.io/")
 
 
 
