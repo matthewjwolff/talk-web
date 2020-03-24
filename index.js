@@ -13,6 +13,15 @@ const constraints = {
 // TODO: change to nongoogle server
 const configuration = { 'iceServers': [{ 'urls': 'stun:stun.l.google.com:19302' }] }
 
+const audioHolder = document.getElementById("audioDiv")
+
+/*
+TODO: handle rooms, use this url stuff to construct the websocket url
+var wsURL = new URL(document.location.href)
+wsURL.protocol = "wss"
+wsURL.port = 8080
+wsURL.toString()
+*/
 
 
 navigator.mediaDevices.getUserMedia(constraints)
@@ -53,10 +62,11 @@ navigator.mediaDevices.getUserMedia(constraints)
                 }
                 // set up a track for the remote user
                 const remoteStream = new MediaStream();
-                // TODO: we will have to use vue or something to add audio elements as added
-                // or use webaudio
-                const remoteAudio = document.querySelector('audio#remote');
+                // TODO: maybe better to use webaudio
+                const remoteAudio = document.createElement('audio')
                 remoteAudio.srcObject = remoteStream;
+                remoteAudio.setAttribute("id", iceTarget)
+                audioDiv.appendChild(remoteAudio)
 
                 peerConnection.addEventListener('track', async (event) => {
                     // when we get the remote track, add it to our stream
@@ -91,7 +101,9 @@ navigator.mediaDevices.getUserMedia(constraints)
                 }))
             } else if (message.type == "user-leave") {
                 // a user left
-                // TODO: handle user leave
+                delete users[message.data]
+                var element = document.getElementById(message.data)
+                element.parentNode.removeChild(element)
             } else if (message.type == "receive-offer") {
                 var callerConnection = users[message.from]
                 if (!callerConnection) {
