@@ -36,57 +36,18 @@ navigator.mediaDevices.getUserMedia(constraints)
         // get a websocket
         var ws = new WebSocket("wss://testsrv.wolff.io/")
 
-
-
         ws.onmessage = async (e) => {
+            // TODO: use typescript to put types on this message
             var m = e.data
             var message = JSON.parse(m)
             // TODO: async/await
             // TODO: break this up
-
-            // common code needed to initialize an rtc connection
-            // TODO: move elsewhere
-            var rtcInit = (peerConnection, iceTarget) => {
-                // add our track to the connection
-                peerConnection.addTrack(stream.getAudioTracks()[0])
-                // set up the ice callback
-                peerConnection.onicecandidate = (e) => {
-                    // e.candidate is null if no further candidates
-                    if (e.candidate) {
-                        ws.send(JSON.stringify({
-                            'type': "ice-candidate",
-                            // uuid captured from join message
-                            'target': iceTarget,
-                            "data": e.candidate
-                        }))
-                    }
-                }
-                peerConnection.onconnectionstatechange = e => {
-                    if (peerConnection.connectionState === 'connected') {
-                        // Peers connected!
-                        console.log("peers connected")
-                    }
-                }
-                // set up a track for the remote user
-                const remoteStream = new MediaStream();
-                // TODO: maybe better to use webaudio
-                const remoteAudio = document.createElement('audio')
-                remoteAudio.srcObject = remoteStream;
-                remoteAudio.setAttribute("id", iceTarget)
-                audioHolder.appendChild(remoteAudio)
-
-                peerConnection.addEventListener('track', async (event) => {
-                    // when we get the remote track, add it to our stream
-                    remoteStream.addTrack(event.track);
-                });
-            }
 
             if (message.type == "new-user") {
                 me = message.data // this is my id
             } else if (message.type == "user-join") {
                 // a user joined
                 // make a rtcconnection for them and send it to them
-                // TODO: make sure we don't have to check that this message isn't about me
 
                 // start negotiating a webrtc call
                 const peerConnection = new RTCPeerConnection(configuration);
@@ -94,12 +55,13 @@ navigator.mediaDevices.getUserMedia(constraints)
                 users[message.data] = peerConnection
 
                 // peer connection init
-                rtcInit(peerConnection, message.data)
+                rtcInit(peerConnection, stream, ws, message.data)
 
                 // create an offer
                 const offer = await peerConnection.createOffer();
                 // set this offer as the local connection
-                await peerConnection.setLocalDescription(offer);
+                // don't really need to await this
+                /*await*/ peerConnection.setLocalDescription(offer);
                 // send this offer to the server
                 ws.send(JSON.stringify({
                     "type": "send-offer",
@@ -112,17 +74,17 @@ navigator.mediaDevices.getUserMedia(constraints)
                 var element = document.getElementById(message.data)
                 element.parentNode.removeChild(element)
             } else if (message.type == "receive-offer") {
-                var callerConnection = users[message.from]
+                var callerConnection: RTCPeerConnection = users[message.from]
                 if (!callerConnection) {
                     // we do not know about this caller
                     // TODO: pretty sure this is always the case
                     // TODO: have to init this connection too
                     callerConnection = new RTCPeerConnection(configuration)
-                    rtcInit(callerConnection, message.from)
+                    rtcInit(callerConnection, stream, ws, message.from)
                     users[message.from] = callerConnection
                 }
                 var offer = message.data
-                callerConnection.setRemoteDescription(new RTCSessionDescription(message.data))
+                callerConnection.setRemoteDescription(new RTCSessionDescription(offer))
                 const answer = await callerConnection.createAnswer();
                 /*await*/ callerConnection.setLocalDescription(answer);
                 ws.send(JSON.stringify({
@@ -132,20 +94,19 @@ navigator.mediaDevices.getUserMedia(constraints)
                 }))
             } else if (message.type == "receive-answer") {
                 // we are the caller and we got an answer
-                var thisConn = users[message.from]
+                var thisConn: RTCPeerConnection = users[message.from]
                 const remoteDesc = new RTCSessionDescription(message.data);
-                await thisConn.setRemoteDescription(remoteDesc);
+                /*await*/ thisConn.setRemoteDescription(remoteDesc);
             }
             // end RTC connection establishment
             // now ICE
             else if (message.type == "ice-candidate") {
-                var senderConn = users[message.from]
-                await senderConn.addIceCandidate(message.data)
+                var senderConn: RTCPeerConnection = users[message.from]
+                /*await*/ senderConn.addIceCandidate(message.data)
             }
         }
 
         // we can use WebAudio too, see MediaStreamAudioSourceNode and MediaStreamAudioDestinationNode
-
         ws.onclose = (e) => {
             console.log(e);
         }
@@ -155,9 +116,42 @@ navigator.mediaDevices.getUserMedia(constraints)
         ws.onopen = (e) => {
             console.log(e);
         }
-
     })
     .catch(error => {
         console.error('Error accessing media devices.', error);
     });
+
+    // common code needed to initialize an rtc connection
+function rtcInit(peerConnection: RTCPeerConnection, stream: MediaStream, ws: WebSocket, iceTarget: any) {
+    peerConnection.addTrack(stream.getAudioTracks()[0])
+    // set up the ice callback
+    peerConnection.onicecandidate = (e) => {
+        // e.candidate is null if no further candidates
+        if (e.candidate) {
+            ws.send(JSON.stringify({
+                'type': "ice-candidate",
+                // uuid captured from join message
+                'target': iceTarget,
+                "data": e.candidate
+            }))
+        }
+    }
+    peerConnection.onconnectionstatechange = e => {
+        if (peerConnection.connectionState === 'connected') {
+            // Peers connected!
+            console.log("peers connected")
+        }
+    }
+    // set up a track for the remote user
+    const remoteStream = new MediaStream()
+    // TODO: maybe better to use webaudio
+    const remoteAudio = document.createElement('audio')
+    remoteAudio.srcObject = remoteStream
+    remoteAudio.setAttribute("id", iceTarget)
+    audioHolder.appendChild(remoteAudio)
+    peerConnection.addEventListener('track', async (event) => {
+        // when we get the remote track, add it to our stream
+        remoteStream.addTrack(event.track)
+    })
+}
 
