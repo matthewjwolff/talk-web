@@ -31,11 +31,20 @@ wsURL.port = 8080
 wsURL.toString()
 */
 
+var ws:WebSocket;
+
+function setUsername(username:string) {
+    ws.send(JSON.stringify({
+        type:"set-username",
+        data:username
+    }))
+}
+
 
 navigator.mediaDevices.getUserMedia(constraints)
     .then(stream => {
         // get a websocket
-        var ws = new WebSocket("wss://testsrv.wolff.io/")
+        ws = new WebSocket("ws://localhost:8081/")
 
         ws.onmessage = async (e) => {
             // TODO: use typescript to put types on this message
@@ -113,6 +122,10 @@ navigator.mediaDevices.getUserMedia(constraints)
             else if (message.type == "ice-candidate") {
                 var senderConn: RTCPeerConnection = users[message.from].connection
                 /*await*/ senderConn.addIceCandidate(message.data)
+            } else if (message.type == "set-username") {
+                var from:string = message.from
+                var sender = users[from]
+                sender.displayName = message.data
             }
         }
 
