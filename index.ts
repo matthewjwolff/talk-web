@@ -3,11 +3,12 @@ interface Dictionary<T> {
 }
 
 interface User {
-    displayName:string;
-    id:string
+    displayName?:string;
+    id:string;
+    connection: RTCPeerConnection
 }
 
-var users: Dictionary<RTCPeerConnection> = {}
+var users: Dictionary<User> = {}
 
 var me = null // id given by the server
 
@@ -52,10 +53,13 @@ navigator.mediaDevices.getUserMedia(constraints)
                 // start negotiating a webrtc call
                 const peerConnection = new RTCPeerConnection(configuration);
                 // store this connection as the offer for this user
-                users[message.data] = peerConnection
+                users[message.data] = {
+                    id:message.data,
+                    connection: peerConnection
+                }
 
                 // peer connection init
-                rtcInit(peerConnection, stream, ws, message.data)
+                rtcInit(peerConnection, stream, ws, message.data as string)
 
                 // create an offer
                 const offer = await peerConnection.createOffer();
@@ -74,15 +78,21 @@ navigator.mediaDevices.getUserMedia(constraints)
                 var element = document.getElementById(message.data)
                 element.parentNode.removeChild(element)
             } else if (message.type == "receive-offer") {
-                var callerConnection: RTCPeerConnection = users[message.from]
+                var user = users[message.from]
+                
                 if (!callerConnection) {
                     // we do not know about this caller
                     // TODO: pretty sure this is always the case
                     // TODO: have to init this connection too
                     callerConnection = new RTCPeerConnection(configuration)
-                    rtcInit(callerConnection, stream, ws, message.from)
-                    users[message.from] = callerConnection
+                    rtcInit(callerConnection, stream, ws, message.from as string)
+                    user = {
+                        id:message.from,
+                        connection: callerConnection
+                    }
+                    users[message.from] = user
                 }
+                var callerConnection: RTCPeerConnection = user.connection
                 var offer = message.data
                 callerConnection.setRemoteDescription(new RTCSessionDescription(offer))
                 const answer = await callerConnection.createAnswer();
@@ -94,14 +104,14 @@ navigator.mediaDevices.getUserMedia(constraints)
                 }))
             } else if (message.type == "receive-answer") {
                 // we are the caller and we got an answer
-                var thisConn: RTCPeerConnection = users[message.from]
+                var thisConn: RTCPeerConnection = users[message.from].connection
                 const remoteDesc = new RTCSessionDescription(message.data);
                 /*await*/ thisConn.setRemoteDescription(remoteDesc);
             }
             // end RTC connection establishment
             // now ICE
             else if (message.type == "ice-candidate") {
-                var senderConn: RTCPeerConnection = users[message.from]
+                var senderConn: RTCPeerConnection = users[message.from].connection
                 /*await*/ senderConn.addIceCandidate(message.data)
             }
         }
@@ -122,7 +132,7 @@ navigator.mediaDevices.getUserMedia(constraints)
     });
 
     // common code needed to initialize an rtc connection
-function rtcInit(peerConnection: RTCPeerConnection, stream: MediaStream, ws: WebSocket, iceTarget: any) {
+function rtcInit(peerConnection: RTCPeerConnection, stream: MediaStream, ws: WebSocket, iceTarget: string) {
     peerConnection.addTrack(stream.getAudioTracks()[0])
     // set up the ice callback
     peerConnection.onicecandidate = (e) => {
