@@ -1,4 +1,4 @@
-//import Vue from 'vue'
+import Vue from 'vue'
 
 interface Dictionary<T> {
     [key: string]: T;
@@ -12,14 +12,13 @@ interface User {
 
 var users: Dictionary<User> = {}
 
-/*
 var app = new Vue({
-    el: 'vue-context',
+    el: '#vue-context',
     data: {
         users:users
     }
 })
-*/
+
 
 // promt user for media permissions
 const constraints = {

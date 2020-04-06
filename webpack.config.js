@@ -1,10 +1,7 @@
 const path = require('path');
 
 module.exports = {
-    optimization: {
-		// We no not want to minimize our code.
-		minimize: false
-	},
+  mode:"development",
   entry: './index.ts',
   module: {
     rules: [
@@ -22,4 +19,5 @@ module.exports = {
     filename: 'bundle.js',
     path: path.resolve(__dirname),
   },
+  devtool:'inline-source-map'
 };
