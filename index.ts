@@ -1,3 +1,5 @@
+//import Vue from 'vue'
+
 interface Dictionary<T> {
     [key: string]: T;
 }
@@ -9,6 +11,15 @@ interface User {
 }
 
 var users: Dictionary<User> = {}
+
+/*
+var app = new Vue({
+    el: 'vue-context',
+    data: {
+        users:users
+    }
+})
+*/
 
 // promt user for media permissions
 const constraints = {
@@ -31,10 +42,10 @@ wsURL.toString()
 
 var ws:WebSocket;
 
-function setUsername(username:string) {
+document.getElementById("submit-username-button").onclick = (ev) => {
     ws.send(JSON.stringify({
         type:"set-username",
-        data:username
+        data:(document.getElementById("username") as HTMLInputElement).value
     }))
 }
 
@@ -93,10 +104,16 @@ navigator.mediaDevices.getUserMedia(constraints)
                 element.parentNode.removeChild(element)
             } else if (message.type == "receive-offer") {
                 var user = users[message.from]
-                var callerConnection: RTCPeerConnection = user?.connection
+                if(!user) {
+                    // don't know about this caller
+                    user = {
+                        id:message.from,
+                        connection: null
+                    }
+                    users[message.from] = user
+                }
+                var callerConnection: RTCPeerConnection = user.connection
                 if (!callerConnection) {
-                    // we know about the caller, but have to init the connection
-                    // TODO: pretty sure this is always the case
                     callerConnection = new RTCPeerConnection(configuration)
                     rtcInit(callerConnection, stream, ws, message.from as string)
                     users[message.from].connection = callerConnection
