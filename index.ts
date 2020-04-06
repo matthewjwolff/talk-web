@@ -10,8 +10,6 @@ interface User {
 
 var users: Dictionary<User> = {}
 
-var me = null // id given by the server
-
 // promt user for media permissions
 const constraints = {
     'video': false,
@@ -54,7 +52,14 @@ navigator.mediaDevices.getUserMedia(constraints)
             // TODO: break this up
 
             if (message.type == "new-user") {
-                me = message.data // this is my id
+                // being told about existing users
+                for(var id in message.data) {
+                    users[id] = {
+                        id:id,
+                        displayName:message.data[id],
+                        connection:null
+                    }
+                }
             } else if (message.type == "user-join") {
                 // a user joined
                 // make a rtcconnection for them and send it to them
@@ -88,20 +93,14 @@ navigator.mediaDevices.getUserMedia(constraints)
                 element.parentNode.removeChild(element)
             } else if (message.type == "receive-offer") {
                 var user = users[message.from]
-                
+                var callerConnection: RTCPeerConnection = user?.connection
                 if (!callerConnection) {
-                    // we do not know about this caller
+                    // we know about the caller, but have to init the connection
                     // TODO: pretty sure this is always the case
-                    // TODO: have to init this connection too
                     callerConnection = new RTCPeerConnection(configuration)
                     rtcInit(callerConnection, stream, ws, message.from as string)
-                    user = {
-                        id:message.from,
-                        connection: callerConnection
-                    }
-                    users[message.from] = user
+                    users[message.from].connection = callerConnection
                 }
-                var callerConnection: RTCPeerConnection = user.connection
                 var offer = message.data
                 callerConnection.setRemoteDescription(new RTCSessionDescription(offer))
                 const answer = await callerConnection.createAnswer();
