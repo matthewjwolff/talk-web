@@ -8,9 +8,7 @@
         <p>Currently connected users</p>
         <div id="vue-context">
             <ul>
-                <li v-for="arr in users">
-                    {{arr.id}}
-                </li>
+                <li v-for="user in users">{{user.displayName}}</li>
             </ul>
         </div>
         <label>Username</label>

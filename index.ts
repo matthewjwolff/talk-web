@@ -6,7 +6,7 @@ interface Dictionary<T> {
 }
 
 interface User {
-    displayName?:string;
+    displayName:string;
     id:string;
     connection: RTCPeerConnection | null
 }
@@ -59,6 +59,7 @@ navigator.mediaDevices.getUserMedia(constraints)
             // TODO: use typescript to put types on this message
             var m = e.data
             var message = JSON.parse(m)
+            console.log(message)
             // TODO: async/await
             // TODO: break this up
 
@@ -80,7 +81,8 @@ navigator.mediaDevices.getUserMedia(constraints)
                 // store this connection as the offer for this user
                 users.add({
                     id:message.data,
-                    connection: peerConnection
+                    connection: peerConnection,
+                    displayName:message.data
                 })
 
                 // peer connection init
@@ -108,7 +110,8 @@ navigator.mediaDevices.getUserMedia(constraints)
                     // don't know about this caller
                     user = {
                         id:message.from,
-                        connection: null
+                        connection: null,
+                        displayName:message.from
                     }
                     users.add(user)
                 }
