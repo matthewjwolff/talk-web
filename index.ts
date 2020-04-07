@@ -2,10 +2,6 @@ import Vue from 'vue'
 import ArrayMap from './arraymap'
 import Config from './config'
 
-interface Dictionary<T> {
-    [key: string]: T;
-}
-
 interface User {
     displayName:string;
     id:string;
