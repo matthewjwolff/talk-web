@@ -1,5 +1,6 @@
 import Vue from 'vue'
 import ArrayMap from './arraymap'
+import Config from './config'
 
 interface Dictionary<T> {
     [key: string]: T;
@@ -53,7 +54,7 @@ document.getElementById("submit-username-button")!.onclick = (ev) => {
 navigator.mediaDevices.getUserMedia(constraints)
     .then(stream => {
         // get a websocket
-        ws = new WebSocket("ws://localhost:8081/")
+        ws = new WebSocket(Config.WS_URL)
 
         ws.onmessage = async (e) => {
             // TODO: use typescript to put types on this message
