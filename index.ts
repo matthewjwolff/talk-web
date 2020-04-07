@@ -1,4 +1,5 @@
 import Vue from 'vue'
+import ArrayMap from './arraymap'
 
 interface Dictionary<T> {
     [key: string]: T;
@@ -7,15 +8,15 @@ interface Dictionary<T> {
 interface User {
     displayName?:string;
     id:string;
-    connection: RTCPeerConnection
+    connection: RTCPeerConnection | null
 }
 
-var users: Dictionary<User> = {}
+var users: ArrayMap<string, User> = new ArrayMap(u => u.id)
 
 var app = new Vue({
     el: '#vue-context',
     data: {
-        users:users
+        users:users.array
     }
 })
 
@@ -29,7 +30,7 @@ const constraints = {
 // TODO: change to nongoogle server
 const configuration = { 'iceServers': [{ 'urls': 'stun:stun.l.google.com:19302' }] }
 
-const audioHolder: HTMLElement = document.getElementById("audioDiv")
+const audioHolder: HTMLElement = document.getElementById("audioDiv")!
 
 /*
 TODO: handle rooms, use this url stuff to construct the websocket url
@@ -41,7 +42,7 @@ wsURL.toString()
 
 var ws:WebSocket;
 
-document.getElementById("submit-username-button").onclick = (ev) => {
+document.getElementById("submit-username-button")!.onclick = (ev) => {
     ws.send(JSON.stringify({
         type:"set-username",
         data:(document.getElementById("username") as HTMLInputElement).value
@@ -64,11 +65,11 @@ navigator.mediaDevices.getUserMedia(constraints)
             if (message.type == "new-user") {
                 // being told about existing users
                 for(var id in message.data) {
-                    users[id] = {
+                    users.add({
                         id:id,
                         displayName:message.data[id],
                         connection:null
-                    }
+                    })
                 }
             } else if (message.type == "user-join") {
                 // a user joined
@@ -77,10 +78,10 @@ navigator.mediaDevices.getUserMedia(constraints)
                 // start negotiating a webrtc call
                 const peerConnection = new RTCPeerConnection(configuration);
                 // store this connection as the offer for this user
-                users[message.data] = {
+                users.add({
                     id:message.data,
                     connection: peerConnection
-                }
+                })
 
                 // peer connection init
                 rtcInit(peerConnection, stream, ws, message.data as string)
@@ -98,24 +99,24 @@ navigator.mediaDevices.getUserMedia(constraints)
                 }))
             } else if (message.type == "user-leave") {
                 // a user left
-                delete users[message.data]
+                users.remove(users.map.get(message.data)!)
                 var element = document.getElementById(message.data)
-                element.parentNode.removeChild(element)
+                element!.parentNode!.removeChild(element!)
             } else if (message.type == "receive-offer") {
-                var user = users[message.from]
+                var user = users.map.get(message.from)
                 if(!user) {
                     // don't know about this caller
                     user = {
                         id:message.from,
                         connection: null
                     }
-                    users[message.from] = user
+                    users.add(user)
                 }
-                var callerConnection: RTCPeerConnection = user.connection
+                var callerConnection: RTCPeerConnection = user.connection!
                 if (!callerConnection) {
                     callerConnection = new RTCPeerConnection(configuration)
                     rtcInit(callerConnection, stream, ws, message.from as string)
-                    users[message.from].connection = callerConnection
+                    users.map.get(message.from)!.connection = callerConnection
                 }
                 var offer = message.data
                 callerConnection.setRemoteDescription(new RTCSessionDescription(offer))
@@ -128,18 +129,18 @@ navigator.mediaDevices.getUserMedia(constraints)
                 }))
             } else if (message.type == "receive-answer") {
                 // we are the caller and we got an answer
-                var thisConn: RTCPeerConnection = users[message.from].connection
+                var thisConn: RTCPeerConnection = users.map.get(message.from)!.connection!
                 const remoteDesc = new RTCSessionDescription(message.data);
                 /*await*/ thisConn.setRemoteDescription(remoteDesc);
             }
             // end RTC connection establishment
             // now ICE
             else if (message.type == "ice-candidate") {
-                var senderConn: RTCPeerConnection = users[message.from].connection
+                var senderConn: RTCPeerConnection = users.map.get(message.from)!.connection!
                 /*await*/ senderConn.addIceCandidate(message.data)
             } else if (message.type == "set-username") {
                 var from:string = message.from
-                var sender = users[from]
+                var sender = users.map.get(from)!
                 sender.displayName = message.data
             }
         }
