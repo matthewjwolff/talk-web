@@ -40,9 +40,12 @@ wsURL.toString()
 var ws:WebSocket;
 
 document.getElementById("submit-username-button")!.onclick = (ev) => {
+    // update local storage
+    var username = (document.getElementById("username") as HTMLInputElement).value
+    window.localStorage.setItem("username", username)
     ws.send(JSON.stringify({
         type:"set-username",
-        data:(document.getElementById("username") as HTMLInputElement).value
+        data: username
     }))
 }
 
@@ -68,6 +71,15 @@ navigator.mediaDevices.getUserMedia(constraints)
                         displayName:message.data[id],
                         connection:null
                     })
+                }
+                // also update username
+                var username = window.localStorage.getItem("username")
+                if(username) {
+                    (document.getElementById("username") as HTMLInputElement).value = username
+                    ws.send(JSON.stringify({
+                        "type":"set-username",
+                        "data":username
+                    }))
                 }
             } else if (message.type == "user-join") {
                 // a user joined

@@ -22,5 +22,10 @@ module.exports = {
     filename: 'bundle.js',
     path: path.resolve(__dirname),
   },
-  devtool:'inline-source-map'
+  devtool:'inline-source-map',
+  devServer: {
+    contentBase: path.resolve(__dirname),
+    compress: true,
+    port: 8080
+  }
 };
